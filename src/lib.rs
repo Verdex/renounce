@@ -1,3 +1,14 @@
+
+// TODO ParserError definition
+// TODO Switch to Result
+// TODO zero or more
+// TODO rename unit? 
+// TODO maybe
+// TODO fatal
+// TODO error handling 'stack trace'
+// TODO probably return failed at item 
+// TODO alt definition
+
 #[macro_export]
 macro_rules! parser {
     ($input:ident => { $($rest:tt)* } )  => {
