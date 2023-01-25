@@ -1,14 +1,23 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+#[macro_export]
+macro_rules! parser {
+    ($input:ident => { $($rest:tt)* } )  => {
+        {
+            let input = &mut $input;
+            let mut rp = input.clone();
+            parser!(input, rp, $($rest)*)
+        }
+    };
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+    ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
+        match $ma($input) {
+            Some($a) => {
+                parser!($input, $rp, $($rest)*)
+            },
+            None => { std::mem::swap($input, &mut $rp); None },
+        }
+    };
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+    ($input:ident, $rp:ident, unit $e:expr) => {
+        Some($e)
+    };
 }
