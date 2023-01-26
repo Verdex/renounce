@@ -9,6 +9,12 @@
 // TODO probably return failed at item 
 // TODO alt definition
 
+#[derive(Debug)]
+pub enum ParseError {
+    Error,
+    Fatal,
+}
+
 #[macro_export]
 macro_rules! parser {
     ($input:ident => { $($rest:tt)* } )  => {
@@ -21,14 +27,41 @@ macro_rules! parser {
 
     ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
         match $ma($input) {
-            Some($a) => {
+            Ok($a) => {
                 parser!($input, $rp, $($rest)*)
             },
-            None => { std::mem::swap($input, &mut $rp); None },
+            Err(_) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, // TODO need to handle the _ in Err(_)
         }
     };
 
     ($input:ident, $rp:ident, unit $e:expr) => {
-        Some($e)
+        Ok($e)
     };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn simple_parser_should_parse() {
+        fn parse_y(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
+            match input.next() {
+                Some('y') => Ok('y'),
+                _ => Err(ParseError::Error),
+            }
+        }
+
+        let input = "yyy";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            three <= parse_y;
+            unit (one, two, three)
+        }).expect("the parse should be successful");
+
+        assert_eq!( output, ('y', 'y', 'y') );
+    }
 }
