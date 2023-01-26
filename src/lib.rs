@@ -1,10 +1,7 @@
 
 // TODO ParserError definition
-// TODO Switch to Result
 // TODO zero or more
 // TODO rename unit? 
-// TODO maybe
-// TODO fatal
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
 // TODO alt definition
@@ -20,21 +17,54 @@ macro_rules! parser {
     ($input:ident => { $($rest:tt)* } )  => {
         {
             let input = &mut $input;
-            let mut rp = input.clone();
-            parser!(input, rp, $($rest)*)
+            parser!(input, $($rest)*)
         }
     };
 
-    ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
-        match $ma($input) {
-            Ok($a) => {
-                parser!($input, $rp, $($rest)*)
-            },
-            Err(_) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, // TODO need to handle the _ in Err(_)
+    ($input:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
+        {
+            let mut rp = $input.clone(); 
+            match $ma($input) {
+                Ok($a) => {
+                    parser!($input, $($rest)*)
+                },
+                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
+                Err(ParseError::Error) => { std::mem::swap($input, &mut rp); Err(ParseError::Error) }, 
+            }
         }
     };
 
-    ($input:ident, $rp:ident, unit $e:expr) => {
+    ($input:ident, $a:ident <= ! $ma:expr; $($rest:tt)*) => {
+        {
+            let mut rp = $input.clone(); 
+            match $ma($input) {
+                Ok($a) => { 
+                    parser!($input, $($rest)*) 
+                },
+                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
+                Err(ParseError::Error) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) }, 
+            }
+        }
+    };
+
+    ($input:ident, $a:ident <= ? $ma:expr; $($rest:tt)*) => {
+        {
+            let mut rp = $input.clone(); 
+            match $ma($input) {
+                Ok($a) => {
+                    parser!($input, $($rest)*)
+                },
+                Err(ParseError::Error) => { 
+                    std::mem::swap($input, &mut $rp); 
+                    let $a = None;
+                    parser!($input, $($rest)*)
+                }, 
+                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
+            }
+        }
+    };
+
+    ($input:ident, unit $e:expr) => {
         Ok($e)
     };
 }
