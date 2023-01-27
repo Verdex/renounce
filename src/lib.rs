@@ -4,7 +4,6 @@
 // TODO rename unit? 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
-// TODO alt definition
 // TODO where (and where fatal) 
 // TODO let
 // TODO end of stream
@@ -19,7 +18,8 @@ pub enum ParseError {
 macro_rules! alt {
     ($input:ident => $($parser:expr);* ) => {
         'alt : {
-            let input = &mut $input;
+            use std::borrow::BorrowMut;
+            let input = $input.borrow_mut();
 
             $(
                 let mut rp = input.clone();
@@ -42,19 +42,10 @@ macro_rules! alt {
 macro_rules! parser {
     ($input:ident => { $($rest:tt)* } )  => {
         {
-            let input = &mut $input;
+            use std::borrow::BorrowMut;
+            let input = $input.borrow_mut();
             let mut rp = input.clone();
             parser!(input, rp, $($rest)*)
-        }
-    };
-
-    ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
-        match $ma($input) {
-            Ok($a) => {
-                parser!($input, $rp, $($rest)*)
-            },
-            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
-            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, 
         }
     };
 
@@ -79,6 +70,16 @@ macro_rules! parser {
                 parser!($input, $rp, $($rest)*)
             }, 
             Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+        }
+    };
+
+    ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
+        match $ma($input) {
+            Ok($a) => {
+                parser!($input, $rp, $($rest)*)
+            },
+            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, 
         }
     };
 
@@ -110,6 +111,33 @@ mod test {
             Some('y') => Ok('y'),
             _ => Err(ParseError::Error),
         }
+    }
+
+    fn parse_yy(input : &mut (impl Iterator<Item = char> + Clone)) -> Result<(char, char), ParseError> {
+        parser!(input => {
+            one <= parse_y;
+            two <= ! parse_y;
+            unit (one, two)
+        })
+    }
+
+    #[test]
+    fn alt_should_be_usable_in_parse() {
+        fn y_or_z(input : &mut (impl Iterator<Item = char> + Clone)) -> Result<char, ParseError> {
+            alt!(input => parse_y; parse_z)
+        }
+
+        let input = "yzy";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= y_or_z; 
+            two <= y_or_z; 
+            three <= y_or_z; 
+            unit (one, two, three)
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, ('y', 'z', 'y'));
     }
 
     #[test]
