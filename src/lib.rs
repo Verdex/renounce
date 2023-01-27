@@ -1,6 +1,5 @@
 
 // TODO ParserError definition
-// TODO zero or more
 // TODO rename unit? 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
@@ -56,6 +55,28 @@ macro_rules! parser {
             },
             Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
             Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) }, 
+        }
+    };
+
+    ($input:ident, $rp:ident, $a:ident <= * $ma:expr; $($rest:tt)*) => {
+        'zero_or_more : {
+            let mut ret = vec![];
+            loop {
+                let mut peek = $input.clone();
+                match $ma($input) {
+                    Ok(x) => { ret.push(x); },
+                    Err(ParseError::Error) => {
+                        std::mem::swap($input, &mut peek); 
+                        break;
+                    },
+                    Err(ParseError::Fatal) => {
+                        std::mem::swap($input, &mut $rp); 
+                        break 'zero_or_more Err(ParseError::Fatal);
+                    },
+                }
+            }
+            let $a = ret;
+            parser!($input, $rp, $($rest)*)
         }
     };
 
@@ -119,6 +140,19 @@ mod test {
             two <= ! parse_y;
             unit (one, two)
         })
+    }
+
+    #[test]
+    fn zero_or_more_should_parse() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            ys <= * parse_y;
+            unit ys
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, ['y', 'y']);
     }
 
     #[test]
