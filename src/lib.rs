@@ -5,6 +5,8 @@
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
 // TODO alt definition
+// TODO where (and where fatal) 
+// TODO let
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -65,15 +67,22 @@ macro_rules! parser {
 mod test {
     use super::*;
 
+    fn any_char(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
+        match input.next() {
+            Some(x) => Ok(x),
+            None => Err(ParseError::Error),
+        }
+    }
+
+    fn parse_y(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
+        match input.next() {
+            Some('y') => Ok('y'),
+            _ => Err(ParseError::Error),
+        }
+    }
+
     #[test]
     fn simple_parser_should_parse() {
-        fn parse_y(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
-            match input.next() {
-                Some('y') => Ok('y'),
-                _ => Err(ParseError::Error),
-            }
-        }
-
         let input = "yyy";
         let mut input = input.chars();
 
@@ -85,5 +94,21 @@ mod test {
         }).expect("the parse should be successful");
 
         assert_eq!( output, ('y', 'y', 'y') );
+    }
+
+    #[test]
+    fn failed_parse_should_return_input_to_original_state() {
+        let input = "yxz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            three <= parse_y;
+            unit (one, two, three)
+        });
+
+        assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('y') );
     }
 }
