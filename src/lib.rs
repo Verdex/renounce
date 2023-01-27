@@ -7,11 +7,35 @@
 // TODO alt definition
 // TODO where (and where fatal) 
 // TODO let
+// TODO end of stream
 
 #[derive(Debug)]
 pub enum ParseError {
     Error,
     Fatal,
+}
+
+#[macro_export]
+macro_rules! alt {
+    ($input:ident => $($parser:expr);* ) => {
+        'alt : {
+            let input = &mut $input;
+
+            $(
+                let mut rp = input.clone();
+                match $parser(input) {
+                    Ok(x) => { break 'alt Ok(x); },
+                    Err(ParseError::Error) => { std::mem::swap(input, &mut rp); },
+                    Err(ParseError::Fatal) => { 
+                        std::mem::swap(input, &mut rp);  
+                        break 'alt Err(ParseError::Fatal);
+                    },
+                }
+            )*
+
+            Err(ParseError::Error)
+        }
+    };
 }
 
 #[macro_export]
@@ -74,11 +98,28 @@ mod test {
         }
     }
 
+    fn parse_z(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
+        match input.next() {
+            Some('z') => Ok('z'),
+            _ => Err(ParseError::Error),
+        }
+    }
+
     fn parse_y(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
         match input.next() {
             Some('y') => Ok('y'),
             _ => Err(ParseError::Error),
         }
+    }
+
+    #[test]
+    fn alt_should_parse_successfully() {
+        let input = "x";
+        let mut input = input.chars();
+
+        let output = alt!(input => parse_y; parse_z; any_char).expect("the parse should be successful");
+
+        assert_eq!(output, 'x');
     }
 
     #[test]
