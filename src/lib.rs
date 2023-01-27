@@ -17,54 +17,46 @@ macro_rules! parser {
     ($input:ident => { $($rest:tt)* } )  => {
         {
             let input = &mut $input;
-            parser!(input, $($rest)*)
+            let mut rp = input.clone();
+            parser!(input, rp, $($rest)*)
         }
     };
 
-    ($input:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
-        {
-            let mut rp = $input.clone(); 
-            match $ma($input) {
-                Ok($a) => {
-                    parser!($input, $($rest)*)
-                },
-                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
-                Err(ParseError::Error) => { std::mem::swap($input, &mut rp); Err(ParseError::Error) }, 
-            }
+    ($input:ident, $rp:ident, $a:ident <= $ma:expr; $($rest:tt)*) => {
+        match $ma($input) {
+            Ok($a) => {
+                parser!($input, $rp, $($rest)*)
+            },
+            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, 
         }
     };
 
-    ($input:ident, $a:ident <= ! $ma:expr; $($rest:tt)*) => {
-        {
-            let mut rp = $input.clone(); 
-            match $ma($input) {
-                Ok($a) => { 
-                    parser!($input, $($rest)*) 
-                },
-                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
-                Err(ParseError::Error) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) }, 
-            }
+    ($input:ident, $rp:ident, $a:ident <= ! $ma:expr; $($rest:tt)*) => {
+        match $ma($input) {
+            Ok($a) => { 
+                parser!($input, $rp, $($rest)*) 
+            },
+            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) }, 
         }
     };
 
-    ($input:ident, $a:ident <= ? $ma:expr; $($rest:tt)*) => {
-        {
-            let mut rp = $input.clone(); 
-            match $ma($input) {
-                Ok($a) => {
-                    parser!($input, $($rest)*)
-                },
-                Err(ParseError::Error) => { 
-                    std::mem::swap($input, &mut $rp); 
-                    let $a = None;
-                    parser!($input, $($rest)*)
-                }, 
-                Err(ParseError::Fatal) => { std::mem::swap($input, &mut rp); Err(ParseError::Fatal) },
-            }
+    ($input:ident, $rp:ident, $a:ident <= ? $ma:expr; $($rest:tt)*) => {
+        match $ma($input) {
+            Ok($a) => {
+                parser!($input, $($rest)*)
+            },
+            Err(ParseError::Error) => { 
+                std::mem::swap($input, &mut $rp); 
+                let $a = None;
+                parser!($input, $rp, $($rest)*)
+            }, 
+            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
         }
     };
 
-    ($input:ident, unit $e:expr) => {
+    ($input:ident, $rp:ident, unit $e:expr) => {
         Ok($e)
     };
 }
