@@ -98,7 +98,7 @@ mod test {
 
     #[test]
     fn failed_parse_should_return_input_to_original_state() {
-        let input = "yxz";
+        let input = "yyz";
         let mut input = input.chars();
 
         let output = parser!(input => {
@@ -109,6 +109,7 @@ mod test {
         });
 
         assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('y') );
         assert_eq!( input.next(), Some('y') );
     }
 }
