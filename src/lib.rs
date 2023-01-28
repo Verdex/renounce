@@ -3,7 +3,6 @@
 // TODO rename unit? (to result?) 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
-// TODO where (and where fatal) 
 // TODO end of stream
 
 #[derive(Debug)]
@@ -44,6 +43,26 @@ macro_rules! parser {
             let input = $input.borrow_mut();
             let mut rp = input.clone();
             parser!(input, rp, $($rest)*)
+        }
+    };
+
+    ($input:ident, $rp:ident, ! where $e:expr; $($rest:tt)*) => {
+        if $e {
+            parser!($input, $rp, $($rest)*)
+        }
+        else {
+            std::mem::swap($input, &mut $rp);
+            Err(ParseError::Fatal)
+        }
+    };
+
+    ($input:ident, $rp:ident, where $e:expr; $($rest:tt)*) => {
+        if $e {
+            parser!($input, $rp, $($rest)*)
+        }
+        else {
+            std::mem::swap($input, &mut $rp);
+            Err(ParseError::Error)
         }
     };
 
@@ -158,6 +177,64 @@ mod test {
     }
 
     #[test]
+    fn success_fatal_where_should_work() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            ! where y == 'y';
+            unit y
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, 'y');
+    }
+
+    #[test]
+    fn success_where_should_work() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            where y == 'y';
+            unit y
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, 'y');
+    }
+
+    #[test]
+    fn fatal_where_should_work() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            ! where y == 'x';
+            unit y
+        });
+
+        assert!( matches!(output, Err(ParseError::Fatal)) );
+        assert_eq!( input.next(), Some('y') );
+    }
+
+    #[test]
+    fn where_should_work() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            where y == 'x';
+            unit y
+        });
+
+        assert!( matches!(output, Err(ParseError::Error)) );
+        assert_eq!( input.next(), Some('y') );
+    }
+
+    #[test]
     fn let_should_work() {
         struct X(u8);
 
@@ -238,6 +315,7 @@ mod test {
 
         let output = parser!(input => {
             ys <= * parse_y;
+            _z <= parse_z;
             unit ys
         }).expect("the parse should be successful");
 
