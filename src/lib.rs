@@ -152,6 +152,19 @@ mod test {
     }
 
     #[test]
+    fn zero_or_more_should_pass_through_fatal() {
+        let input = "yyyyyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            ys <= * parse_yy;
+            unit ys
+        });
+
+        assert!( matches!(output, Err(ParseError::Fatal)) );
+    }
+    
+    #[test]
     fn maybe_should_parse_present_item() {
         let input = "yz";
         let mut input = input.chars();
