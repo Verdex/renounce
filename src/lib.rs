@@ -1,6 +1,5 @@
 
 // TODO ParserError definition
-// TODO rename unit? (to result?) 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
 
@@ -151,7 +150,7 @@ macro_rules! parser {
         }
     };
 
-    ($input:ident, $rp:ident, unit $e:expr) => {
+    ($input:ident, $rp:ident, select $e:expr) => {
         Ok($e)
     };
 }
@@ -189,7 +188,7 @@ mod test {
         parser!(input => {
             one <= parse_y;
             two <= ! parse_y;
-            unit (one, two)
+            select (one, two)
         })
     }
 
@@ -201,7 +200,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             ! end;
-            unit y
+            select y
         }).expect("the parse should be successful");
 
         assert_eq!(output, 'y')
@@ -215,7 +214,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             ! end;
-            unit y
+            select y
         });
 
         assert!(matches!(output, Err(ParseError::Fatal)));
@@ -231,7 +230,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             end;
-            unit y
+            select y
         }).expect("the parse should be successful");
 
         assert_eq!(output, 'y')
@@ -245,7 +244,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             end;
-            unit y
+            select y
         });
 
         assert!(matches!(output, Err(ParseError::Error)));
@@ -261,7 +260,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             ! where y == 'y';
-            unit y
+            select y
         }).expect("the parse should be successful");
 
         assert_eq!(output, 'y');
@@ -275,7 +274,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             where y == 'y';
-            unit y
+            select y
         }).expect("the parse should be successful");
 
         assert_eq!(output, 'y');
@@ -289,7 +288,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             ! where y == 'x';
-            unit y
+            select y
         });
 
         assert!( matches!(output, Err(ParseError::Fatal)) );
@@ -304,7 +303,7 @@ mod test {
         let output = parser!(input => {
             y <= parse_y;
             where y == 'x';
-            unit y
+            select y
         });
 
         assert!( matches!(output, Err(ParseError::Error)) );
@@ -321,7 +320,7 @@ mod test {
         let output = parser!(input => {
             let X(x) = X(1);
             ys <= * parse_yy;
-            unit (x, ys)
+            select (x, ys)
         }).expect("the parse should be successful");
 
         assert_eq!(output.0, 1);
@@ -335,7 +334,7 @@ mod test {
 
         let output = parser!(input => {
             ys <= * parse_yy;
-            unit ys
+            select ys
         });
 
         assert!( matches!(output, Err(ParseError::Fatal)) );
@@ -349,7 +348,7 @@ mod test {
         let output = parser!(input => {
             one <= ? parse_y;
             two <= parse_z;
-            unit (one, two)
+            select (one, two)
         }).expect("the parse should be successful");
 
         assert_eq!(output, (Some('y'), 'z'));
@@ -364,7 +363,7 @@ mod test {
             zero <= any_char;
             one <= ? parse_y;
             two <= parse_z;
-            unit (zero, one, two)
+            select (zero, one, two)
         }).expect("the parse should be successful");
 
         assert_eq!(output, ('w', None, 'z'));
@@ -379,7 +378,7 @@ mod test {
             zero <= any_char;
             one <= ? return_fatal;
             two <= parse_z;
-            unit (zero, one, two)
+            select (zero, one, two)
         });
 
         assert!( matches!(output, Err(ParseError::Fatal)) );
@@ -393,7 +392,7 @@ mod test {
         let output = parser!(input => {
             ys <= * parse_y;
             _z <= parse_z;
-            unit ys
+            select ys
         }).expect("the parse should be successful");
 
         assert_eq!(output, ['y', 'y']);
@@ -412,7 +411,7 @@ mod test {
             one <= y_or_z; 
             two <= y_or_z; 
             three <= y_or_z; 
-            unit (one, two, three)
+            select (one, two, three)
         }).expect("the parse should be successful");
 
         assert_eq!(output, ('y', 'z', 'y'));
@@ -437,7 +436,7 @@ mod test {
             one <= parse_y;
             two <= parse_y;
             three <= parse_y;
-            unit (one, two, three)
+            select (one, two, three)
         }).expect("the parse should be successful");
 
         assert_eq!( output, ('y', 'y', 'y') );
@@ -452,7 +451,7 @@ mod test {
             one <= parse_y;
             two <= parse_y;
             three <= parse_y;
-            unit (one, two, three)
+            select (one, two, three)
         });
 
         assert!( matches!( output, Err(ParseError::Error) ) );
