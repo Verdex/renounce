@@ -6,17 +6,21 @@
 
 #[derive(Debug)]
 pub enum ParseError {
-    Error, // TODO errors don't return 'trace' ?
-    Fatal,
+    Error,
+    Fatal(Vec<Reason>),
 }
 
 #[derive(Debug)]
 pub enum Reason {
-    Alternate,
+    Alt,
+    Where,
+    End,
+    Fatal,
+    Rule(&'static str),
 }
 
 #[macro_export]
-macro_rules! alt { // TODO fatal alternate?
+macro_rules! alt { 
     ($input:ident => $($parser:expr);* ) => {
         'alt : {
             use std::borrow::BorrowMut;
@@ -27,9 +31,9 @@ macro_rules! alt { // TODO fatal alternate?
                 match $parser(input) {
                     Ok(x) => { break 'alt Ok(x); },
                     Err(ParseError::Error) => { std::mem::swap(input, &mut rp); },
-                    Err(ParseError::Fatal) => { 
-                        std::mem::swap(input, &mut rp);  
-                        break 'alt Err(ParseError::Fatal);
+                    Err(ParseError::Fatal(mut reasons)) => { 
+                        reasons.push(Reason::Alt);
+                        break 'alt Err(ParseError::Fatal(reasons));
                     },
                 }
             )*
@@ -45,8 +49,8 @@ macro_rules! parser {
         {
             use std::borrow::BorrowMut;
             let input = $input.borrow_mut();
-            let mut rp = input.clone();
-            parser!(input, rp, $($rest)*)
+            let mut _rp = input.clone();
+            parser!(input, _rp, $($rest)*)
         }
     };
 
@@ -56,7 +60,7 @@ macro_rules! parser {
         }
         else {
             std::mem::swap($input, &mut $rp);
-            Err(ParseError::Fatal)
+            Err(ParseError::Fatal(vec![Reason::Where]))
         }
     };
 
@@ -82,8 +86,13 @@ macro_rules! parser {
             Ok($a) => { 
                 parser!($input, $rp, $($rest)*) 
             },
-            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
-            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) }, 
+            Err(ParseError::Fatal(mut reasons)) => { 
+                reasons.push(Reason::Rule(stringify!($a)));
+                Err(ParseError::Fatal(reasons)) 
+            },
+            Err(ParseError::Error) => { 
+                Err(ParseError::Fatal(vec![Reason::Rule(stringify!($a))])) 
+            }, 
         }
     };
 
@@ -98,9 +107,9 @@ macro_rules! parser {
                         std::mem::swap($input, &mut peek); 
                         break;
                     },
-                    Err(ParseError::Fatal) => {
-                        std::mem::swap($input, &mut $rp); 
-                        break 'zero_or_more Err(ParseError::Fatal);
+                    Err(ParseError::Fatal(mut reasons)) => {
+                        reasons.push(Reason::Rule(stringify!($a)));
+                        break 'zero_or_more Err(ParseError::Fatal(reasons));
                     },
                 }
             }
@@ -123,7 +132,10 @@ macro_rules! parser {
                     let $a = None;
                     parser!($input, $rp, $($rest)*)
                 }, 
-                Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+                Err(ParseError::Fatal(mut reasons)) => { 
+                    reasons.push(Reason::Rule(stringify!($a)));
+                    Err(ParseError::Fatal(reasons)) 
+                },
             }
         }
     };
@@ -133,8 +145,14 @@ macro_rules! parser {
             Ok($a) => {
                 parser!($input, $rp, $($rest)*)
             },
-            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
-            Err(ParseError::Error) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) }, 
+            Err(ParseError::Fatal(mut reasons)) => { 
+                reasons.push(Reason::Rule(stringify!($a)));
+                Err(ParseError::Fatal(reasons)) 
+            },
+            Err(ParseError::Error) => { 
+                std::mem::swap($input, &mut $rp); 
+                Err(ParseError::Error) 
+            }, 
         }
     };
 
@@ -148,11 +166,17 @@ macro_rules! parser {
     };
 
     ($input:ident, $rp:ident, ! end; $($rest:tt)*) => {
-        match $input.next() {
-            Some(_) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
-            None => {
-                parser!($input, $rp, $($rest)*)
-            },
+        {
+            let mut rp = $input.clone();
+            match $input.next() {
+                Some(_) => { 
+                    std::mem::swap($input, &mut rp);
+                    Err(ParseError::Fatal(vec![Reason::End]))
+                },
+                None => {
+                    parser!($input, $rp, $($rest)*)
+                },
+            }
         }
     };
 
@@ -166,7 +190,7 @@ mod test {
     use super::*;
 
     fn return_fatal(_input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
-        Err(ParseError::Fatal)
+        Err(ParseError::Fatal(vec![Reason::Fatal]))
     }
 
     fn any_char(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
@@ -214,7 +238,7 @@ mod test {
 
     #[test]
     fn fatal_end_should_fail_when_not_at_end_of_input() {
-        let input = "yy";
+        let input = "ye";
         let mut input = input.chars();
 
         let output = parser!(input => {
@@ -223,9 +247,8 @@ mod test {
             select y
         });
 
-        assert!(matches!(output, Err(ParseError::Fatal)));
-        assert_eq!(input.next(), Some('y'));
-        assert_eq!(input.next(), Some('y'));
+        assert!(matches!(output, Err(ParseError::Fatal(_))));
+        assert_eq!(input.next(), Some('e'));
     }
     
     #[test]
@@ -297,7 +320,7 @@ mod test {
             select y
         });
 
-        assert!( matches!(output, Err(ParseError::Fatal)) );
+        assert!( matches!(output, Err(ParseError::Fatal(_))) );
         assert_eq!( input.next(), Some('y') );
     }
 
@@ -343,7 +366,7 @@ mod test {
             select ys
         });
 
-        assert!( matches!(output, Err(ParseError::Fatal)) );
+        assert!( matches!(output, Err(ParseError::Fatal(_))) );
     }
     
     #[test]
@@ -387,7 +410,7 @@ mod test {
             select (zero, one, two)
         });
 
-        assert!( matches!(output, Err(ParseError::Fatal)) );
+        assert!( matches!(output, Err(ParseError::Fatal(_))) );
     }
 
     #[test]
