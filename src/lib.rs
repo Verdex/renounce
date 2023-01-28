@@ -1,8 +1,6 @@
 
 // TODO ParserError definition
-// TODO error handling 'stack trace'
-// TODO probably return failed at item 
-//      I think to do this you can just have fatal not reset the stream
+
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -486,5 +484,98 @@ mod test {
         assert!( matches!( output, Err(ParseError::Error) ) );
         assert_eq!( input.next(), Some('y') );
         assert_eq!( input.next(), Some('y') );
+    }
+
+    #[test]
+    fn where_failure_should_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            where false;
+            select (one, two)
+        });
+
+        assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('z') );
+    } 
+
+    #[test]
+    fn rule_failure_should_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            three <= parse_y;
+            select (one, two, three)
+        });
+
+        assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('z') );
+    }
+
+    #[test]
+    fn end_failure_should_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            end;
+            select (one, two)
+        });
+
+        assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), Some('z') );
+    }
+
+    #[test]
+    fn alt_failure_should_reset_input() {
+        let input = "x";
+        let mut input = input.chars();
+
+        let output = alt!(input => parse_y; parse_z);
+
+        assert!( matches!( output, Err(ParseError::Error) ) );
+        assert_eq!( input.next(), Some('x') );
+    }
+
+    #[test]
+    fn zero_or_more_failure_should_reset_input() {
+        let input = "x";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= * parse_y;
+            select one
+        });
+
+        assert!( matches!( output, Ok(_) ) );
+        assert_eq!( input.next(), Some('x') );
+    }
+
+    #[test]
+    fn maybe_failure_should_reset_input() {
+        let input = "x";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= ? parse_y;
+            select one
+        });
+
+        assert!( matches!( output, Ok(_) ) );
+        assert_eq!( input.next(), Some('x') );
     }
 }
