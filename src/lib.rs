@@ -195,6 +195,36 @@ mod test {
     }
 
     #[test]
+    fn end_should_succeed_when_at_end_of_input() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            end;
+            unit y
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, 'y')
+    }
+
+    #[test]
+    fn end_should_fail_when_not_at_end_of_input() {
+        let input = "yy";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            end;
+            unit y
+        });
+
+        assert!(matches!(output, Err(ParseError::Error)));
+        assert_eq!(input.next(), Some('y'));
+        assert_eq!(input.next(), Some('y'));
+    }
+
+    #[test]
     fn success_fatal_where_should_work() {
         let input = "y";
         let mut input = input.chars();
