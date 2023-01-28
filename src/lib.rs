@@ -134,6 +134,24 @@ macro_rules! parser {
         }
     };
 
+    ($input:ident, $rp:ident, end; $($rest:tt)*) => {
+        match $input.next() {
+            Some(_) => { std::mem::swap($input, &mut $rp); Err(ParseError::Error) },
+            None => {
+                parser!($input, $rp, $($rest)*)
+            },
+        }
+    };
+
+    ($input:ident, $rp:ident, ! end; $($rest:tt)*) => {
+        match $input.next() {
+            Some(_) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+            None => {
+                parser!($input, $rp, $($rest)*)
+            },
+        }
+    };
+
     ($input:ident, $rp:ident, unit $e:expr) => {
         Ok($e)
     };
