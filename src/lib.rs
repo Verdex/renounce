@@ -189,6 +189,7 @@ macro_rules! parser {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::str::Chars;
 
     fn return_fatal(_input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
         Err(ParseError::Fatal(vec![Reason::Fatal]))
@@ -628,5 +629,50 @@ mod test {
 
         assert!( matches!( output, Err(ParseError::Fatal(_)) ) );
         assert_eq!( input.next(), Some('z') );
+    }
+
+    #[test]
+    fn fatal_where_should_trace_correctly() {
+        /*fn fatal_where(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                ! where false;
+                select '\0'
+            })
+        }
+
+        fn rule(input : &mut Chars) -> Result<char, ParseError>  {
+        }
+        
+        fn fatal_rule(input : &mut Chars) -> Result<char, ParseError> {
+
+        }
+
+        fn maybe(input : &mut Chars) -> Result<char, ParseError> {
+
+        }
+
+        fn zero_or_more(input : &mut Chars) -> Result<char, ParseError> {
+
+        }
+
+        fn alternate(input : &mut Chars) -> Result<char, ParseError> {
+
+        }
+
+        fn let_statement(input : &mut Chars) -> Result<char, ParseError> {
+
+        }*/
+
+        assert!(false);
+    }
+
+    #[test]
+    fn fatal_end_should_trace_correctly() { 
+        assert!(false);
+    }
+
+    #[test]
+    fn fatal_rule_should_trace_correctly() { 
+        assert!(false);
     }
 }
