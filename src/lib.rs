@@ -48,6 +48,13 @@ macro_rules! parser {
         }
     };
 
+    ($input:ident, $rp:ident, let $name:pat = $e:expr; $($rest:tt)*) => {
+        {
+            let $name = $e;
+            parser!($input, $rp, $($rest)*)
+        }
+    };
+
     ($input:ident, $rp:ident, $a:ident <= ! $ma:expr; $($rest:tt)*) => {
         match $ma($input) {
             Ok($a) => { 
@@ -149,6 +156,23 @@ mod test {
             two <= ! parse_y;
             unit (one, two)
         })
+    }
+
+    #[test]
+    fn let_should_work() {
+        struct X(u8);
+
+        let input = "yyyyyy";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            let X(x) = X(1);
+            ys <= * parse_yy;
+            unit (x, ys)
+        }).expect("the parse should be successful");
+
+        assert_eq!(output.0, 1);
+        assert_eq!(output.1, [('y', 'y'), ('y', 'y'), ('y', 'y')]);
     }
 
     #[test]
