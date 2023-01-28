@@ -81,16 +81,21 @@ macro_rules! parser {
     };
 
     ($input:ident, $rp:ident, $a:ident <= ? $ma:expr; $($rest:tt)*) => {
-        match $ma($input) {
-            Ok($a) => {
-                parser!($input, $($rest)*)
-            },
-            Err(ParseError::Error) => { 
-                std::mem::swap($input, &mut $rp); 
-                let $a = None;
-                parser!($input, $rp, $($rest)*)
-            }, 
-            Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+        {
+            let mut rp = $input.clone();
+
+            match $ma($input) {
+                Ok(x) => {
+                    let $a = Some(x);
+                    parser!($input, $rp, $($rest)*)
+                },
+                Err(ParseError::Error) => { 
+                    std::mem::swap($input, &mut rp); 
+                    let $a = None;
+                    parser!($input, $rp, $($rest)*)
+                }, 
+                Err(ParseError::Fatal) => { std::mem::swap($input, &mut $rp); Err(ParseError::Fatal) },
+            }
         }
     };
 
@@ -112,6 +117,10 @@ macro_rules! parser {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    fn return_fatal(_input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
+        Err(ParseError::Fatal)
+    }
 
     fn any_char(input : &mut impl Iterator<Item = char>) -> Result<char, ParseError> {
         match input.next() {
@@ -140,6 +149,50 @@ mod test {
             two <= ! parse_y;
             unit (one, two)
         })
+    }
+
+    #[test]
+    fn maybe_should_parse_present_item() {
+        let input = "yz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= ? parse_y;
+            two <= parse_z;
+            unit (one, two)
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, (Some('y'), 'z'));
+    }
+
+    #[test]
+    fn maybe_should_reset_input_to_immediately_before_it_on_failure() {
+        let input = "wz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            zero <= any_char;
+            one <= ? parse_y;
+            two <= parse_z;
+            unit (zero, one, two)
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, ('w', None, 'z'));
+    }
+
+    #[test]
+    fn maybe_should_pass_through_fatal() {
+        let input = "wz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            zero <= any_char;
+            one <= ? return_fatal;
+            two <= parse_z;
+            unit (zero, one, two)
+        });
+
+        assert!( matches!(output, Err(ParseError::Fatal)) );
     }
 
     #[test]
