@@ -3,7 +3,6 @@
 // TODO rename unit? (to result?) 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
-// TODO end of stream
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -194,6 +193,36 @@ mod test {
         })
     }
 
+    #[test]
+    fn fatal_end_should_succeed_when_at_end_of_input() {
+        let input = "y";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            ! end;
+            unit y
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, 'y')
+    }
+
+    #[test]
+    fn fatal_end_should_fail_when_not_at_end_of_input() {
+        let input = "yy";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            y <= parse_y;
+            ! end;
+            unit y
+        });
+
+        assert!(matches!(output, Err(ParseError::Fatal)));
+        assert_eq!(input.next(), Some('y'));
+        assert_eq!(input.next(), Some('y'));
+    }
+    
     #[test]
     fn end_should_succeed_when_at_end_of_input() {
         let input = "y";
