@@ -2,15 +2,21 @@
 // TODO ParserError definition
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
+//      I think to do this you can just have fatal not reset the stream
 
 #[derive(Debug)]
 pub enum ParseError {
-    Error,
+    Error, // TODO errors don't return 'trace' ?
     Fatal,
 }
 
+#[derive(Debug)]
+pub enum Reason {
+    Alternate,
+}
+
 #[macro_export]
-macro_rules! alt {
+macro_rules! alt { // TODO fatal alternate?
     ($input:ident => $($parser:expr);* ) => {
         'alt : {
             use std::borrow::BorrowMut;
