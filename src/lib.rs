@@ -1,10 +1,9 @@
 
 // TODO ParserError definition
-// TODO rename unit? 
+// TODO rename unit? (to result?) 
 // TODO error handling 'stack trace'
 // TODO probably return failed at item 
 // TODO where (and where fatal) 
-// TODO let
 // TODO end of stream
 
 #[derive(Debug)]
