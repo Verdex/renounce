@@ -57,7 +57,6 @@ macro_rules! parser {
             parser!($input, $rp, $($rest)*)
         }
         else {
-            std::mem::swap($input, &mut $rp);
             Err(ParseError::Fatal(vec![Reason::Where]))
         }
     };
@@ -80,17 +79,21 @@ macro_rules! parser {
     };
 
     ($input:ident, $rp:ident, $a:ident <= ! $ma:expr; $($rest:tt)*) => {
-        match $ma($input) {
-            Ok($a) => { 
-                parser!($input, $rp, $($rest)*) 
-            },
-            Err(ParseError::Fatal(mut reasons)) => { 
-                reasons.push(Reason::Rule(stringify!($a)));
-                Err(ParseError::Fatal(reasons)) 
-            },
-            Err(ParseError::Error) => { 
-                Err(ParseError::Fatal(vec![Reason::Rule(stringify!($a))])) 
-            }, 
+        {
+            let mut rp = $input.clone();
+            match $ma($input) {
+                Ok($a) => { 
+                    parser!($input, $rp, $($rest)*) 
+                },
+                Err(ParseError::Fatal(mut reasons)) => { 
+                    reasons.push(Reason::Rule(stringify!($a)));
+                    Err(ParseError::Fatal(reasons)) 
+                },
+                Err(ParseError::Error) => { 
+                    std::mem::swap($input, &mut rp);
+                    Err(ParseError::Fatal(vec![Reason::Rule(stringify!($a))])) 
+                }, 
+            }
         }
     };
 
@@ -319,7 +322,7 @@ mod test {
         });
 
         assert!( matches!(output, Err(ParseError::Fatal(_))) );
-        assert_eq!( input.next(), Some('y') );
+        assert_eq!( input.next(), None );
     }
 
     #[test]
@@ -577,5 +580,53 @@ mod test {
 
         assert!( matches!( output, Ok(_) ) );
         assert_eq!( input.next(), Some('x') );
+    }
+
+    #[test]
+    fn fatal_where_failure_should_not_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            ! where false;
+            select (one, two)
+        });
+
+        assert!( matches!( output, Err(ParseError::Fatal(_)) ) );
+        assert_eq!( input.next(), Some('z') );
+    } 
+
+    #[test]
+    fn fatal_rule_failure_should_not_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            three <= ! parse_y;
+            select (one, two, three)
+        });
+
+        assert!( matches!( output, Err(ParseError::Fatal(_)) ) );
+        assert_eq!( input.next(), Some('z') );
+    }
+
+    #[test]
+    fn fatal_end_failure_should_not_reset_input() {
+        let input = "yyz";
+        let mut input = input.chars();
+
+        let output = parser!(input => {
+            one <= parse_y;
+            two <= parse_y;
+            ! end;
+            select (one, two)
+        });
+
+        assert!( matches!( output, Err(ParseError::Fatal(_)) ) );
+        assert_eq!( input.next(), Some('z') );
     }
 }
