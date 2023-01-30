@@ -1,7 +1,4 @@
 
-// TODO ParserError definition
-
-
 #[derive(Debug)]
 pub enum ParseError {
     Error,
@@ -16,6 +13,31 @@ pub enum Reason {
     Fatal,
     Rule(&'static str),
 }
+
+impl std::fmt::Display for Reason {
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> std::fmt::Result {
+        use Reason::*;
+        match self {
+            Alt => write!(f, "Alternative"),
+            Where => write!(f, "Where"),
+            End => write!(f, "End"),
+            Fatal => write!(f, "Fatal"),
+            Rule(r) => write!(f, "Rule: {}", r),
+        }
+    }
+}
+
+impl std::fmt::Display for ParseError {
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> std::fmt::Result {
+        use ParseError::*;
+        match self {
+            Error => write!(f, "Error"),
+            Fatal(reasons) => write!(f, "Fatal: {}", reasons.iter().map(|r| format!("{}", r)).collect::<Vec<_>>().join("\n")),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
 
 #[macro_export]
 macro_rules! alt { 
