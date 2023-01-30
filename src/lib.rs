@@ -640,7 +640,7 @@ mod test {
 
     #[test]
     fn fatal_where_should_trace_correctly() {
-        /*fn fatal_where(input : &mut Chars) -> Result<char, ParseError> {
+        fn fatal_where(input : &mut Chars) -> Result<char, ParseError> {
             parser!(input => {
                 ! where false;
                 select '\0'
@@ -648,38 +648,206 @@ mod test {
         }
 
         fn rule(input : &mut Chars) -> Result<char, ParseError>  {
+            parser!(input => {
+                _rx <= fatal_where;
+                select 'a'
+            })
         }
         
         fn fatal_rule(input : &mut Chars) -> Result<char, ParseError> {
-
+            parser!(input => {
+                _fx <= ! rule;
+                select 'a'
+            })
         }
 
         fn maybe(input : &mut Chars) -> Result<char, ParseError> {
-
+            parser!(input => {
+                mx <= ? fatal_rule;
+                let _y : Option<char> = mx;
+                select 'a' 
+            })
         }
 
         fn zero_or_more(input : &mut Chars) -> Result<char, ParseError> {
-
+            parser!(input => {
+                _zx <= * maybe;
+                select 'a'
+            })
         }
 
         fn alternate(input : &mut Chars) -> Result<char, ParseError> {
-
+            alt!(input => parse_y; zero_or_more)
         }
 
         fn let_statement(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                let x = '\0';
+                _alt <= alternate;
+                select x
+            })
+        }
 
-        }*/
+        let input = "_";
+        let mut input = input.chars();
 
-        assert!(false);
+        let output = let_statement(&mut input);
+
+        if let Err(ParseError::Fatal(reasons)) = output {
+            assert_eq!(input.next(), Some('_'));
+            assert_eq!(reasons.len(), 7);
+            assert_eq!(reasons[0], Reason::Where);
+            assert_eq!(reasons[1], Reason::Rule("_rx"));
+            assert_eq!(reasons[2], Reason::Rule("_fx"));
+            assert_eq!(reasons[3], Reason::Rule("mx"));
+            assert_eq!(reasons[4], Reason::Rule("_zx"));
+            assert_eq!(reasons[5], Reason::Alt);
+            assert_eq!(reasons[6], Reason::Rule("_alt"));
+        }
+        else {
+            assert!(false);
+        }
     }
 
     #[test]
     fn fatal_end_should_trace_correctly() { 
-        assert!(false);
+        fn fatal_end(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                ! end;
+                select '\0'
+            })
+        }
+
+        fn rule(input : &mut Chars) -> Result<char, ParseError>  {
+            parser!(input => {
+                _rx <= fatal_end;
+                select 'a'
+            })
+        }
+        
+        fn fatal_rule(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                _fx <= ! rule;
+                select 'a'
+            })
+        }
+
+        fn maybe(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                mx <= ? fatal_rule;
+                let _y : Option<char> = mx;
+                select 'a' 
+            })
+        }
+
+        fn zero_or_more(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                _zx <= * maybe;
+                select 'a'
+            })
+        }
+
+        fn alternate(input : &mut Chars) -> Result<char, ParseError> {
+            alt!(input => parse_y; zero_or_more)
+        }
+
+        fn let_statement(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                let x = '\0';
+                _alt <= alternate;
+                select x
+            })
+        }
+
+        let input = "_";
+        let mut input = input.chars();
+
+        let output = let_statement(&mut input);
+
+        if let Err(ParseError::Fatal(reasons)) = output {
+            assert_eq!(input.next(), Some('_'));
+            assert_eq!(reasons.len(), 7);
+            assert_eq!(reasons[0], Reason::End);
+            assert_eq!(reasons[1], Reason::Rule("_rx"));
+            assert_eq!(reasons[2], Reason::Rule("_fx"));
+            assert_eq!(reasons[3], Reason::Rule("mx"));
+            assert_eq!(reasons[4], Reason::Rule("_zx"));
+            assert_eq!(reasons[5], Reason::Alt);
+            assert_eq!(reasons[6], Reason::Rule("_alt"));
+        }
+        else {
+            assert!(false);
+        }
     }
 
     #[test]
     fn fatal_rule_should_trace_correctly() { 
-        assert!(false);
+        fn fatal_rule_origin(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                _y <= ! parse_y;
+                select '\0'
+            })
+        }
+
+        fn rule(input : &mut Chars) -> Result<char, ParseError>  {
+            parser!(input => {
+                _rx <= fatal_rule_origin;
+                select 'a'
+            })
+        }
+        
+        fn fatal_rule(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                _fx <= ! rule;
+                select 'a'
+            })
+        }
+
+        fn maybe(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                mx <= ? fatal_rule;
+                let _y : Option<char> = mx;
+                select 'a' 
+            })
+        }
+
+        fn zero_or_more(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                _zx <= * maybe;
+                select 'a'
+            })
+        }
+
+        fn alternate(input : &mut Chars) -> Result<char, ParseError> {
+            alt!(input => parse_y; zero_or_more)
+        }
+
+        fn let_statement(input : &mut Chars) -> Result<char, ParseError> {
+            parser!(input => {
+                let x = '\0';
+                _alt <= alternate;
+                select x
+            })
+        }
+
+        let input = "_";
+        let mut input = input.chars();
+
+        let output = let_statement(&mut input);
+
+        if let Err(ParseError::Fatal(reasons)) = output {
+            assert_eq!(input.next(), Some('_'));
+            assert_eq!(reasons.len(), 7);
+            assert_eq!(reasons[0], Reason::Rule("_y"));
+            assert_eq!(reasons[1], Reason::Rule("_rx"));
+            assert_eq!(reasons[2], Reason::Rule("_fx"));
+            assert_eq!(reasons[3], Reason::Rule("mx"));
+            assert_eq!(reasons[4], Reason::Rule("_zx"));
+            assert_eq!(reasons[5], Reason::Alt);
+            assert_eq!(reasons[6], Reason::Rule("_alt"));
+        }
+        else {
+            assert!(false);
+        }
     }
 }
