@@ -8,7 +8,7 @@ pub enum ParseError {
     Fatal(Vec<Reason>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Reason {
     Alt,
     Where,
