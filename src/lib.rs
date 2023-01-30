@@ -71,6 +71,13 @@ macro_rules! parser {
         }
     };
 
+    ($input:ident, $rp:ident, let $name:ident : $t:ty = $e:expr; $($rest:tt)*) => {
+        {
+            let $name : $t = $e;
+            parser!($input, $rp, $($rest)*)
+        }
+    };
+
     ($input:ident, $rp:ident, let $name:pat = $e:expr; $($rest:tt)*) => {
         {
             let $name = $e;
