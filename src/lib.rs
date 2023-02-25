@@ -41,6 +41,15 @@ impl std::error::Error for ParseError {}
 
 #[macro_export]
 macro_rules! pat {
+    ($name:ident : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
+        fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+            match input.next() {
+                Some($pattern) => Ok($e),
+                _ => Err(ParseError::Fatal(vec![Reason::Rule(stringify!($name))])),
+            }
+        }
+    };
+
     ($name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
         fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
             match input.next() {
@@ -50,6 +59,8 @@ macro_rules! pat {
         }
     };
 }
+
+// TODO pred
 
 #[macro_export]
 macro_rules! alt { 
@@ -266,6 +277,58 @@ mod test {
     }
 
     #[test]
+    fn fatal_pat_should_fatal_error() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = ! Some(5) => 5);
+
+        let output = p(&mut input);
+
+        assert!( matches!(output, Err(ParseError::Fatal(_))) );
+    }
+
+    #[test]
+    fn fatal_pat_should_create_parser() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = ! Some(x) => x + 1);
+
+        let output = p(&mut input).expect("the parse should be successful");
+
+        assert_eq!(output, 5);
+    }
+
+    #[test]
+    fn fatal_pat_should_create_parser_usable_parser() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = ! Some(x) => x + 1);
+
+        let output = parser!(input => {
+            a <= p;
+            where a == 5;
+            select a
+        }).expect("the parse should be successful");
+
+        assert_eq!(output, 5);
+    }
+
+    #[test]
+    fn pat_should_error() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = Some(5) => 5);
+
+        let output = p(&mut input);
+
+        assert!( matches!(output, Err(ParseError::Error)) );
+    }
+
+    #[test]
     fn pat_should_create_parser() {
         let input = [Some(4)];
         let mut input = input.into_iter();
@@ -273,6 +336,22 @@ mod test {
         pat!(p : Option<u8> => u8 = Some(x) => x + 1);
 
         let output = p(&mut input).expect("the parse should be successful");
+
+        assert_eq!(output, 5);
+    }
+
+    #[test]
+    fn pat_should_create_parser_usable_parser() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = Some(x) => x + 1);
+
+        let output = parser!(input => {
+            a <= p;
+            where a == 5;
+            select a
+        }).expect("the parse should be successful");
 
         assert_eq!(output, 5);
     }
