@@ -41,8 +41,8 @@ impl std::error::Error for ParseError {}
 
 #[macro_export]
 macro_rules! pat {
-    ($name:ident : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
-        fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+    ($vis:vis $name:ident : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
+        $vis fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
             match input.next() {
                 Some($pattern) => Ok($e),
                 _ => Err(ParseError::Fatal(vec![Reason::Rule(stringify!($name))])),
@@ -50,8 +50,8 @@ macro_rules! pat {
         }
     };
 
-    ($name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
-        fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+    ($vis:vis $name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
+        $vis fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
             match input.next() {
                 Some($pattern) => Ok($e),
                 _ => Err(ParseError::Error),
