@@ -60,8 +60,6 @@ macro_rules! pat {
     };
 }
 
-// TODO pred
-
 #[macro_export]
 macro_rules! alt { 
     ($input:ident => $($parser:expr);* ) => {
