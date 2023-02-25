@@ -40,6 +40,18 @@ impl std::fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 #[macro_export]
+macro_rules! pat {
+    ($name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
+        fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+            match input.next() {
+                Some($pattern) => Ok($e),
+                _ => Err(ParseError::Error),
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! alt { 
     ($input:ident => $($parser:expr);* ) => {
         'alt : {
@@ -251,6 +263,18 @@ mod test {
             two <= ! parse_y;
             select (one, two)
         })
+    }
+
+    #[test]
+    fn pat_should_create_parser() {
+        let input = [Some(4)];
+        let mut input = input.into_iter();
+
+        pat!(p : Option<u8> => u8 = Some(x) => x + 1);
+
+        let output = p(&mut input).expect("the parse should be successful");
+
+        assert_eq!(output, 5);
     }
 
     #[test]
