@@ -41,8 +41,8 @@ impl std::error::Error for ParseError {}
 
 #[macro_export]
 macro_rules! pat {
-    ($vis:vis $name:ident : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
-        $vis fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+    ($vis:vis $name:ident <$life:lifetime> : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
+        $vis fn $name<$life>(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
             match input.next() {
                 Some($pattern) => Ok($e),
                 _ => Err(ParseError::Fatal(vec![Reason::Rule(stringify!($name))])),
@@ -50,13 +50,21 @@ macro_rules! pat {
         }
     };
 
-    ($vis:vis $name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
-        $vis fn $name(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
+    ($vis:vis $name:ident <$life:lifetime> : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
+        $vis fn $name<$life>(input : &mut impl Iterator<Item = $in>) -> Result<$out, ParseError> {
             match input.next() {
                 Some($pattern) => Ok($e),
                 _ => Err(ParseError::Error),
             }
         }
+    };
+
+    ($vis:vis $name:ident : $in:ty => $out:ty = ! $pattern : pat => $e:expr) => {
+        pat!($vis $name <'a> : $in => $out = ! $pattern => $e)
+    };
+
+    ($vis:vis $name:ident : $in:ty => $out:ty = $pattern : pat => $e:expr) => {
+        pat!($vis $name <'a> : $in => $out = $pattern => $e)
     };
 }
 
@@ -272,6 +280,64 @@ mod test {
             two <= ! parse_y;
             select (one, two)
         })
+    }
+
+    #[test]
+    fn pub_pat_should_be_pub() {
+        let input = [Some(4)];
+        let input = &input;
+        let mut input = input.into_iter().enumerate();
+
+        mod m {
+            use super::*;
+            pat!(pub p<'a> : (usize, &'a Option<u8>) => u8 = (_, Some(x)) => x + 1);
+        }
+
+        let output = m::p(&mut input).expect("the parse should be successful");
+
+        assert_eq!( output, 5 );
+    }
+
+    #[test]
+    fn pub_fatal_pat_should_be_pub() {
+        let input = [Some(4)];
+        let input = &input;
+        let mut input = input.into_iter().enumerate();
+
+        mod m {
+            use super::*;
+            pat!(pub p<'a> : (usize, &'a Option<u8>) => u8 = ! (_, Some(x)) => x + 1);
+        }
+
+        let output = m::p(&mut input).expect("the parse should be successful");
+
+        assert_eq!( output, 5 );
+    }
+
+    #[test]
+    fn pat_should_handle_borrowed_data() {
+        let input = [Some(4)];
+        let input = &input;
+        let mut input = input.into_iter().enumerate();
+
+        pat!(pub p<'a> : (usize, &'a Option<u8>) => u8 = (_, Some(x)) => x + 1);
+
+        let output = p(&mut input).expect("the parse should be successful");
+
+        assert_eq!( output, 5 );
+    }
+
+    #[test]
+    fn fatal_pat_should_handle_borrowed_data() {
+        let input = [Some(4)];
+        let input = &input;
+        let mut input = input.into_iter().enumerate();
+
+        pat!(p<'a> : (usize, &'a Option<u8>) => u8 = ! (_, Some(x)) => x + 1);
+
+        let output = p(&mut input).expect("the parse should be successful");
+
+        assert_eq!( output, 5 );
     }
 
     #[test]
